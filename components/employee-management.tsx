@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Search, Plus, Edit, Trash2, UserCheck, DollarSign, Award } from "lucide-react"
+import { Search, Plus, Edit, Trash2, UserCheck, DollarSign, Award, Eye, BarChart3 } from "lucide-react"
 
 interface Employee {
   id: string
@@ -24,6 +24,14 @@ interface Employee {
   totalSales: number
   hoursWorked: number
   performance: number
+}
+
+interface NewEmployeeForm {
+  name: string
+  email: string
+  phone: string
+  role: string
+  salary: string
 }
 
 export function EmployeeManagement() {
@@ -84,8 +92,28 @@ export function EmployeeManagement() {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [isPerformanceDialogOpen, setIsPerformanceDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
-  const [newEmployee, setNewEmployee] = useState<Partial<Employee>>({})
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null)
+  const [deletingEmployee, setDeleteingEmployee] = useState<Employee | null>(null)
+
+  const [newEmployee, setNewEmployee] = useState<NewEmployeeForm>({
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+    salary: "",
+  })
+
+  const [performanceData, setPerformanceData] = useState({
+    totalSales: "",
+    hoursWorked: "",
+    performance: "",
+  })
 
   const filteredEmployees = employees.filter(
     (employee) =>
@@ -95,14 +123,14 @@ export function EmployeeManagement() {
   )
 
   const handleAddEmployee = () => {
-    if (newEmployee.name && newEmployee.email && newEmployee.role) {
+    if (newEmployee.name && newEmployee.email && newEmployee.role && newEmployee.salary) {
       const employee: Employee = {
         id: Date.now().toString(),
         name: newEmployee.name,
         email: newEmployee.email,
-        phone: newEmployee.phone || "",
+        phone: newEmployee.phone,
         role: newEmployee.role,
-        salary: newEmployee.salary || 3000,
+        salary: Number.parseInt(newEmployee.salary),
         status: "active",
         joinDate: new Date().toISOString().split("T")[0],
         totalSales: 0,
@@ -110,7 +138,7 @@ export function EmployeeManagement() {
         performance: 0,
       }
       setEmployees([...employees, employee])
-      setNewEmployee({})
+      setNewEmployee({ name: "", email: "", phone: "", role: "", salary: "" })
       setIsAddDialogOpen(false)
     }
   }
@@ -119,11 +147,62 @@ export function EmployeeManagement() {
     if (editingEmployee) {
       setEmployees(employees.map((e) => (e.id === editingEmployee.id ? editingEmployee : e)))
       setEditingEmployee(null)
+      setIsEditDialogOpen(false)
     }
   }
 
-  const handleDeleteEmployee = (id: string) => {
-    setEmployees(employees.filter((e) => e.id !== id))
+  const handleUpdatePerformance = () => {
+    if (editingEmployee && performanceData.performance) {
+      const updatedEmployee = {
+        ...editingEmployee,
+        totalSales: Number.parseFloat(performanceData.totalSales) || editingEmployee.totalSales,
+        hoursWorked: Number.parseInt(performanceData.hoursWorked) || editingEmployee.hoursWorked,
+        performance: Number.parseInt(performanceData.performance),
+      }
+
+      setEmployees(employees.map((e) => (e.id === editingEmployee.id ? updatedEmployee : e)))
+      setPerformanceData({ totalSales: "", hoursWorked: "", performance: "" })
+      setEditingEmployee(null)
+      setIsPerformanceDialogOpen(false)
+    }
+  }
+
+  const handleDeleteEmployee = () => {
+    if (deletingEmployee) {
+      setEmployees(employees.filter((e) => e.id !== deletingEmployee.id))
+      setDeleteingEmployee(null)
+      setIsDeleteDialogOpen(false)
+    }
+  }
+
+  const handleToggleStatus = (employee: Employee) => {
+    const newStatus = employee.status === "active" ? "inactive" : "active"
+    setEmployees(employees.map((e) => (e.id === employee.id ? { ...e, status: newStatus } : e)))
+  }
+
+  const openEditDialog = (employee: Employee) => {
+    setEditingEmployee({ ...employee })
+    setIsEditDialogOpen(true)
+  }
+
+  const openViewDialog = (employee: Employee) => {
+    setViewingEmployee(employee)
+    setIsViewDialogOpen(true)
+  }
+
+  const openPerformanceDialog = (employee: Employee) => {
+    setEditingEmployee(employee)
+    setPerformanceData({
+      totalSales: employee.totalSales.toString(),
+      hoursWorked: employee.hoursWorked.toString(),
+      performance: employee.performance.toString(),
+    })
+    setIsPerformanceDialogOpen(true)
+  }
+
+  const openDeleteDialog = (employee: Employee) => {
+    setDeleteingEmployee(employee)
+    setIsDeleteDialogOpen(true)
   }
 
   const activeEmployees = employees.filter((e) => e.status === "active").length
@@ -144,6 +223,8 @@ export function EmployeeManagement() {
           <h1 className="text-3xl font-bold text-gray-900">Employee Management</h1>
           <p className="text-gray-600">Manage your team and track performance</p>
         </div>
+
+        {/* Add Employee Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -160,8 +241,9 @@ export function EmployeeManagement() {
                 <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
-                  value={newEmployee.name || ""}
+                  value={newEmployee.name}
                   onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                  placeholder="Enter full name"
                 />
               </div>
               <div>
@@ -169,22 +251,27 @@ export function EmployeeManagement() {
                 <Input
                   id="email"
                   type="email"
-                  value={newEmployee.email || ""}
+                  value={newEmployee.email}
                   onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                  placeholder="Enter email address"
                 />
               </div>
               <div>
                 <Label htmlFor="phone">Phone</Label>
                 <Input
                   id="phone"
-                  value={newEmployee.phone || ""}
+                  value={newEmployee.phone}
                   onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                  placeholder="Enter phone number"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="role">Role</Label>
-                  <Select onValueChange={(value) => setNewEmployee({ ...newEmployee, role: value })}>
+                  <Select
+                    value={newEmployee.role}
+                    onValueChange={(value) => setNewEmployee({ ...newEmployee, role: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
@@ -197,19 +284,23 @@ export function EmployeeManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="salary">Monthly Salary</Label>
+                  <Label htmlFor="salary">Monthly Salary ($)</Label>
                   <Input
                     id="salary"
                     type="number"
-                    value={newEmployee.salary || ""}
-                    onChange={(e) => setNewEmployee({ ...newEmployee, salary: Number.parseInt(e.target.value) })}
+                    value={newEmployee.salary}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, salary: e.target.value })}
+                    placeholder="Enter salary"
                   />
                 </div>
               </div>
-              <Button onClick={handleAddEmployee} className="w-full">
-                Add Employee
-              </Button>
             </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddEmployee}>Add Employee</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -326,20 +417,27 @@ export function EmployeeManagement() {
                   <TableCell>
                     <Badge
                       variant={employee.status === "active" ? "default" : "secondary"}
-                      className={employee.status === "active" ? "bg-green-100 text-green-800" : ""}
+                      className={`cursor-pointer ${employee.status === "active" ? "bg-green-100 text-green-800 hover:bg-green-200" : "hover:bg-gray-200"}`}
+                      onClick={() => handleToggleStatus(employee)}
                     >
                       {employee.status}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => setEditingEmployee(employee)}>
+                    <div className="flex space-x-1">
+                      <Button size="sm" variant="outline" onClick={() => openViewDialog(employee)}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openEditDialog(employee)}>
                         <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openPerformanceDialog(employee)}>
+                        <BarChart3 className="h-3 w-3" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDeleteEmployee(employee.id)}
+                        onClick={() => openDeleteDialog(employee)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -353,8 +451,82 @@ export function EmployeeManagement() {
         </CardContent>
       </Card>
 
+      {/* View Employee Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Employee Details</DialogTitle>
+          </DialogHeader>
+          {viewingEmployee && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarFallback className="text-lg">
+                    {viewingEmployee.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-semibold">{viewingEmployee.name}</h3>
+                  <p className="text-gray-600">{viewingEmployee.role}</p>
+                  <Badge className={viewingEmployee.status === "active" ? "bg-green-100 text-green-800" : ""}>
+                    {viewingEmployee.status}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Email</Label>
+                  <p>{viewingEmployee.email}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Phone</Label>
+                  <p>{viewingEmployee.phone}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Salary</Label>
+                  <p className="text-lg font-semibold">${viewingEmployee.salary.toLocaleString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Join Date</Label>
+                  <p>{viewingEmployee.joinDate}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Total Sales</Label>
+                  <p className="text-lg font-semibold">${viewingEmployee.totalSales.toLocaleString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Hours Worked</Label>
+                  <p>{viewingEmployee.hoursWorked} hours</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Performance</Label>
+                  <div className="flex items-center space-x-2">
+                    <span className={`font-semibold ${getPerformanceColor(viewingEmployee.performance)}`}>
+                      {viewingEmployee.performance}%
+                    </span>
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{ width: `${viewingEmployee.performance}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setIsViewDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Employee Dialog */}
-      <Dialog open={!!editingEmployee} onOpenChange={() => setEditingEmployee(null)}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Employee</DialogTitle>
@@ -378,6 +550,14 @@ export function EmployeeManagement() {
                   onChange={(e) => setEditingEmployee({ ...editingEmployee, email: e.target.value })}
                 />
               </div>
+              <div>
+                <Label htmlFor="edit-phone">Phone</Label>
+                <Input
+                  id="edit-phone"
+                  value={editingEmployee.phone}
+                  onChange={(e) => setEditingEmployee({ ...editingEmployee, phone: e.target.value })}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="edit-role">Role</Label>
@@ -397,7 +577,7 @@ export function EmployeeManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="edit-salary">Monthly Salary</Label>
+                  <Label htmlFor="edit-salary">Monthly Salary ($)</Label>
                   <Input
                     id="edit-salary"
                     type="number"
@@ -408,11 +588,104 @@ export function EmployeeManagement() {
                   />
                 </div>
               </div>
-              <Button onClick={handleEditEmployee} className="w-full">
-                Update Employee
-              </Button>
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editingEmployee.status}
+                  onValueChange={(value: "active" | "inactive") =>
+                    setEditingEmployee({ ...editingEmployee, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditEmployee}>Update Employee</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Performance Update Dialog */}
+      <Dialog open={isPerformanceDialogOpen} onOpenChange={setIsPerformanceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update Performance</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="total-sales">Total Sales ($)</Label>
+              <Input
+                id="total-sales"
+                type="number"
+                step="0.01"
+                value={performanceData.totalSales}
+                onChange={(e) => setPerformanceData({ ...performanceData, totalSales: e.target.value })}
+                placeholder="Enter total sales"
+              />
+            </div>
+            <div>
+              <Label htmlFor="hours-worked">Hours Worked</Label>
+              <Input
+                id="hours-worked"
+                type="number"
+                value={performanceData.hoursWorked}
+                onChange={(e) => setPerformanceData({ ...performanceData, hoursWorked: e.target.value })}
+                placeholder="Enter hours worked"
+              />
+            </div>
+            <div>
+              <Label htmlFor="performance">Performance Score (0-100)</Label>
+              <Input
+                id="performance"
+                type="number"
+                min="0"
+                max="100"
+                value={performanceData.performance}
+                onChange={(e) => setPerformanceData({ ...performanceData, performance: e.target.value })}
+                placeholder="Enter performance score"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPerformanceDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdatePerformance}>Update Performance</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Employee</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>
+              Are you sure you want to delete <strong>{deletingEmployee?.name}</strong>?
+            </p>
+            <p className="text-sm text-gray-500 mt-2">This action cannot be undone.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteEmployee}>
+              Delete Employee
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

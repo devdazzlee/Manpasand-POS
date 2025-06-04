@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Input } from "@/components/ui/input"
@@ -69,6 +69,14 @@ export function NewSale() {
     { id: "13", name: "Croissant", price: 1.8, category: "Bakery", stock: 8 },
   ]
 
+  // Load suspended sales from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem("suspendedSales")
+    if (saved) {
+      setSuspendedSales(JSON.parse(saved))
+    }
+  }, [])
+
   const filteredProducts = products.filter((product) => {
     const matchesCategory = selectedCategory === "All" || product.category === selectedCategory
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -80,7 +88,7 @@ export function NewSale() {
     const currentQuantity = cart.find((item) => item.id === product.id)?.quantity || 0
     if (currentQuantity >= product.stock) {
       toast({
-        variant: "warning",
+        variant: "destructive",
         title: "Insufficient Stock",
         description: `Only ${product.stock} units available for ${product.name}`,
       })
@@ -107,7 +115,6 @@ export function NewSale() {
     }
 
     toast({
-      variant: "success",
       title: "Item Added",
       description: `${product.name} added to cart`,
     })
@@ -122,7 +129,7 @@ export function NewSale() {
 
       if (newQuantity > product.stock) {
         toast({
-          variant: "warning",
+          variant: "destructive",
           title: "Insufficient Stock",
           description: `Only ${product.stock} units available`,
         })
@@ -149,7 +156,6 @@ export function NewSale() {
 
     if (item) {
       toast({
-        variant: "default",
         title: "Item Removed",
         description: `${item.name} removed from cart`,
       })
@@ -159,7 +165,6 @@ export function NewSale() {
   const clearCart = () => {
     setCart([])
     toast({
-      variant: "default",
       title: "Cart Cleared",
       description: "All items removed from cart",
     })
@@ -199,11 +204,11 @@ Cashier: ${receiptData.cashier}
 
 ITEMS:
 ${receiptData.items
-  .map(
-    (item: CartItem) =>
-      `${item.name} x${item.quantity} @ $${item.price.toFixed(2)} = $${(item.price * item.quantity).toFixed(2)}`,
-  )
-  .join("\n")}
+        .map(
+          (item: CartItem) =>
+            `${item.name} x${item.quantity} @ $${item.price.toFixed(2)} = $${(item.price * item.quantity).toFixed(2)}`,
+        )
+        .join("\n")}
 
 --------------------------------
 Subtotal: $${receiptData.subtotal.toFixed(2)}
@@ -241,15 +246,11 @@ Thank you for shopping with us!
         transactions.push(receiptData)
         localStorage.setItem("transactions", JSON.stringify(transactions))
 
-        // Update product stock (simulate inventory update)
-        // In real app, this would be handled by the backend
-
         setLastTransactionId(transactionId)
         setCart([])
         setPaymentDialogOpen(false)
 
         toast({
-          variant: "success",
           title: "Payment Successful",
           description: `Transaction ${transactionId} completed via ${method}`,
         })
@@ -258,7 +259,6 @@ Thank you for shopping with us!
         setTimeout(() => {
           downloadReceipt(receiptData)
           toast({
-            variant: "default",
             title: "Receipt Downloaded",
             description: "Receipt has been saved to your downloads",
           })
@@ -276,7 +276,7 @@ Thank you for shopping with us!
   const handleSuspendSale = async () => {
     if (cart.length === 0) {
       toast({
-        variant: "warning",
+        variant: "destructive",
         title: "Empty Cart",
         description: "Cannot suspend an empty sale",
       })
@@ -301,7 +301,6 @@ Thank you for shopping with us!
         setCart([])
 
         toast({
-          variant: "success",
           title: "Sale Suspended",
           description: `Sale ${suspendedSale.id} has been suspended`,
         })
@@ -326,7 +325,6 @@ Thank you for shopping with us!
         await addToCart(randomProduct)
 
         toast({
-          variant: "success",
           title: "Barcode Scanned",
           description: `Found ${randomProduct.name}`,
         })
@@ -349,9 +347,9 @@ Thank you for shopping with us!
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-screen">
       {/* Products Section */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-auto">
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -420,9 +418,8 @@ Thank you for shopping with us!
               return (
                 <Card
                   key={product.id}
-                  className={`cursor-pointer hover:shadow-md transition-shadow ${
-                    isOutOfStock ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={`cursor-pointer hover:shadow-md transition-shadow ${isOutOfStock ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                   onClick={() => !isOutOfStock && addToCart(product)}
                 >
                   <CardContent className="p-4">

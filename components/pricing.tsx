@@ -18,10 +18,27 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Plus, Search, TrendingUp, Percent, DollarSign, Target } from "lucide-react"
+import { Plus, Search, TrendingUp, Percent, DollarSign, Target, Edit, Play } from "lucide-react"
+
+interface PricingRule {
+  id: string
+  name: string
+  category: string
+  type: string
+  value: number
+  status: "active" | "inactive"
+  products: number
+}
+
+interface NewRuleForm {
+  name: string
+  category: string
+  type: string
+  value: string
+}
 
 export function Pricing() {
-  const [pricingRules, setPricingRules] = useState([
+  const [pricingRules, setPricingRules] = useState<PricingRule[]>([
     {
       id: "PR-001",
       name: "Electronics Markup",
@@ -43,6 +60,16 @@ export function Pricing() {
   ])
 
   const [isCreateRuleOpen, setIsCreateRuleOpen] = useState(false)
+  const [isEditRuleOpen, setIsEditRuleOpen] = useState(false)
+  const [editingRule, setEditingRule] = useState<PricingRule | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+
+  const [newRule, setNewRule] = useState<NewRuleForm>({
+    name: "",
+    category: "",
+    type: "",
+    value: "",
+  })
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -58,6 +85,68 @@ export function Pricing() {
         return "bg-gray-100 text-gray-800"
     }
   }
+
+  const handleCreateRule = () => {
+    if (newRule.name && newRule.category && newRule.type && newRule.value) {
+      const rule: PricingRule = {
+        id: `PR-${String(pricingRules.length + 1).padStart(3, "0")}`,
+        name: newRule.name,
+        category: newRule.category,
+        type: newRule.type,
+        value: Number.parseFloat(newRule.value),
+        status: "active",
+        products: Math.floor(Math.random() * 100) + 1,
+      }
+
+      setPricingRules([...pricingRules, rule])
+      setNewRule({ name: "", category: "", type: "", value: "" })
+      setIsCreateRuleOpen(false)
+    }
+  }
+
+  const handleEditRule = (rule: PricingRule) => {
+    setEditingRule(rule)
+    setNewRule({
+      name: rule.name,
+      category: rule.category,
+      type: rule.type,
+      value: rule.value.toString(),
+    })
+    setIsEditRuleOpen(true)
+  }
+
+  const handleUpdateRule = () => {
+    if (editingRule && newRule.name && newRule.category && newRule.type && newRule.value) {
+      const updatedRules = pricingRules.map((rule) =>
+        rule.id === editingRule.id
+          ? {
+            ...rule,
+            name: newRule.name,
+            category: newRule.category,
+            type: newRule.type,
+            value: Number.parseFloat(newRule.value),
+          }
+          : rule,
+      )
+
+      setPricingRules(updatedRules)
+      setNewRule({ name: "", category: "", type: "", value: "" })
+      setEditingRule(null)
+      setIsEditRuleOpen(false)
+    }
+  }
+
+  const handleApplyRule = (ruleId: string) => {
+    // Simulate applying the rule
+    alert(`Applied pricing rule ${ruleId} to products`)
+  }
+
+  const filteredRules = pricingRules.filter(
+    (rule) =>
+      rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rule.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rule.type.toLowerCase().includes(searchTerm.toLowerCase()),
+  )
 
   return (
     <div className="p-6 space-y-6">
@@ -81,26 +170,33 @@ export function Pricing() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="rule-name">Rule Name</Label>
-                <Input placeholder="Enter rule name" />
+                <Input
+                  placeholder="Enter rule name"
+                  value={newRule.name}
+                  onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select>
+                  <Select
+                    value={newRule.category}
+                    onValueChange={(value) => setNewRule({ ...newRule, category: value })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Products</SelectItem>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="clothing">Clothing</SelectItem>
-                      <SelectItem value="books">Books</SelectItem>
+                      <SelectItem value="All">All Products</SelectItem>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Clothing">Clothing</SelectItem>
+                      <SelectItem value="Books">Books</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rule-type">Rule Type</Label>
-                  <Select>
+                  <Select value={newRule.type} onValueChange={(value) => setNewRule({ ...newRule, type: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -115,14 +211,87 @@ export function Pricing() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="value">Value (%)</Label>
-                <Input type="number" placeholder="Enter percentage" />
+                <Input
+                  type="number"
+                  placeholder="Enter percentage"
+                  value={newRule.value}
+                  onChange={(e) => setNewRule({ ...newRule, value: e.target.value })}
+                />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateRuleOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => setIsCreateRuleOpen(false)}>Create Rule</Button>
+              <Button onClick={handleCreateRule}>Create Rule</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Rule Dialog */}
+        <Dialog open={isEditRuleOpen} onOpenChange={setIsEditRuleOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Pricing Rule</DialogTitle>
+              <DialogDescription>Update pricing rule settings</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-rule-name">Rule Name</Label>
+                <Input
+                  placeholder="Enter rule name"
+                  value={newRule.name}
+                  onChange={(e) => setNewRule({ ...newRule, name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Category</Label>
+                  <Select
+                    value={newRule.category}
+                    onValueChange={(value) => setNewRule({ ...newRule, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Products</SelectItem>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Clothing">Clothing</SelectItem>
+                      <SelectItem value="Books">Books</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-rule-type">Rule Type</Label>
+                  <Select value={newRule.type} onValueChange={(value) => setNewRule({ ...newRule, type: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="markup">Markup %</SelectItem>
+                      <SelectItem value="discount">Discount %</SelectItem>
+                      <SelectItem value="quantity_discount">Quantity Discount</SelectItem>
+                      <SelectItem value="seasonal">Seasonal Pricing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-value">Value (%)</Label>
+                <Input
+                  type="number"
+                  placeholder="Enter percentage"
+                  value={newRule.value}
+                  onChange={(e) => setNewRule({ ...newRule, value: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditRuleOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateRule}>Update Rule</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -155,7 +324,7 @@ export function Pricing() {
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{pricingRules.filter((r) => r.status === "active").length}</div>
             <p className="text-xs text-muted-foreground">Pricing rules</p>
           </CardContent>
         </Card>
@@ -189,7 +358,12 @@ export function Pricing() {
               <div className="flex gap-4 mb-4">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input placeholder="Search pricing rules..." className="pl-10" />
+                  <Input
+                    placeholder="Search pricing rules..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
               </div>
               <Table>
@@ -206,7 +380,7 @@ export function Pricing() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pricingRules.map((rule) => (
+                  {filteredRules.map((rule) => (
                     <TableRow key={rule.id}>
                       <TableCell className="font-medium">{rule.id}</TableCell>
                       <TableCell>{rule.name}</TableCell>
@@ -227,10 +401,12 @@ export function Pricing() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)}>
+                            <Edit className="w-3 h-3 mr-1" />
                             Edit
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleApplyRule(rule.id)}>
+                            <Play className="w-3 h-3 mr-1" />
                             Apply
                           </Button>
                         </div>
@@ -239,6 +415,100 @@ export function Pricing() {
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="margins">
+          <Card>
+            <CardHeader>
+              <CardTitle>Margin Analysis</CardTitle>
+              <CardDescription>Analyze profit margins across categories</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-sm font-medium text-gray-600">Electronics</div>
+                      <div className="text-2xl font-bold">28.5%</div>
+                      <div className="text-xs text-green-600">+3.2% vs target</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-sm font-medium text-gray-600">Clothing</div>
+                      <div className="text-2xl font-bold">45.2%</div>
+                      <div className="text-xs text-green-600">+8.1% vs target</div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="text-sm font-medium text-gray-600">Books</div>
+                      <div className="text-2xl font-bold">22.8%</div>
+                      <div className="text-xs text-red-600">-2.3% vs target</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="competitive">
+          <Card>
+            <CardHeader>
+              <CardTitle>Competitive Pricing</CardTitle>
+              <CardDescription>Monitor competitor prices and market positioning</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-gray-500">Competitive pricing analysis coming soon</p>
+                <Button className="mt-4">Set up Price Monitoring</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader>
+              <CardTitle>Price History</CardTitle>
+              <CardDescription>Track price changes over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Old Price</TableHead>
+                      <TableHead>New Price</TableHead>
+                      <TableHead>Change</TableHead>
+                      <TableHead>Reason</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>2024-01-15</TableCell>
+                      <TableCell>iPhone 15</TableCell>
+                      <TableCell>₹79,900</TableCell>
+                      <TableCell>₹74,900</TableCell>
+                      <TableCell className="text-red-600">-6.3%</TableCell>
+                      <TableCell>Competitor pricing</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>2024-01-14</TableCell>
+                      <TableCell>Samsung TV 55"</TableCell>
+                      <TableCell>₹45,000</TableCell>
+                      <TableCell>₹48,000</TableCell>
+                      <TableCell className="text-green-600">+6.7%</TableCell>
+                      <TableCell>Markup rule applied</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

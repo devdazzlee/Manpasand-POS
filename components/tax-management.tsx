@@ -1,5 +1,7 @@
 "use client"
 
+// you site huustle start here 
+// connect with your buisness partner  phone number
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -139,6 +141,37 @@ export function TaxManagement() {
   const lastMonthTax = taxReports[1]?.taxCollected || 0
   const taxGrowth = lastMonthTax > 0 ? ((currentMonthTax - lastMonthTax) / lastMonthTax) * 100 : 0
 
+  const handleExportReport = () => {
+    // Create CSV content
+    const headers = ["Period", "Total Sales", "Taxable Amount", "Tax Collected", "Exempt Amount"]
+    const csvContent = [
+      headers.join(","),
+      ...taxReports.map((report) =>
+        [
+          report.period,
+          report.totalSales.toFixed(2),
+          report.taxableAmount.toFixed(2),
+          report.taxCollected.toFixed(2),
+          report.exemptAmount.toFixed(2),
+        ].join(","),
+      ),
+    ].join("\n")
+
+    // Create and download the file using native methods
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    const currentDate = new Date().toISOString().split("T")[0]
+    link.href = url
+    link.download = `tax-report-${currentDate}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const [viewingReport, setViewingReport] = useState<TaxReport | null>(null)
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -147,7 +180,7 @@ export function TaxManagement() {
           <p className="text-gray-600">Configure tax rates and generate tax reports</p>
         </div>
         <div className="flex space-x-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExportReport}>
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
@@ -339,7 +372,7 @@ export function TaxManagement() {
                 <div key={index} className="border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium">{report.period}</h4>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => setViewingReport(report)}>
                       <FileText className="h-3 w-3 mr-1" />
                       View
                     </Button>
@@ -476,6 +509,110 @@ export function TaxManagement() {
               <Button onClick={handleEditTaxRate} className="w-full">
                 Update Tax Rate
               </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View Report Dialog */}
+      <Dialog open={!!viewingReport} onOpenChange={() => setViewingReport(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Tax Report: {viewingReport?.period}</DialogTitle>
+          </DialogHeader>
+          {viewingReport && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Total Sales</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">${viewingReport.totalSales.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Tax Collected</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-green-600">${viewingReport.taxCollected.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Taxable Amount</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">${viewingReport.taxableAmount.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Exempt Amount</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">${viewingReport.exemptAmount.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Tax Breakdown</h4>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tax Name</TableHead>
+                      <TableHead>Rate</TableHead>
+                      <TableHead>Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeTaxRates.map((tax) => (
+                      <TableRow key={tax.id}>
+                        <TableCell>{tax.name}</TableCell>
+                        <TableCell>{tax.rate}%</TableCell>
+                        <TableCell>${((viewingReport.taxableAmount * tax.rate) / 100).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell colSpan={2} className="font-bold">
+                        Total Tax
+                      </TableCell>
+                      <TableCell className="font-bold">${viewingReport.taxCollected.toFixed(2)}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setViewingReport(null)}>
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    const reportData = `
+Period: ${viewingReport.period}
+Total Sales: $${viewingReport.totalSales.toFixed(2)}
+Taxable Amount: $${viewingReport.taxableAmount.toFixed(2)}
+Tax Collected: $${viewingReport.taxCollected.toFixed(2)}
+Exempt Amount: $${viewingReport.exemptAmount.toFixed(2)}
+                  `
+                    const blob = new Blob([reportData], { type: "text/plain;charset=utf-8" })
+                    const url = URL.createObjectURL(blob)
+                    const link = document.createElement("a")
+                    link.href = url
+                    link.download = `tax-report-${viewingReport.period}.txt`
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                    URL.revokeObjectURL(url)
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Report
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
