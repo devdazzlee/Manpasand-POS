@@ -10,9 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { Store, Eye, EyeOff } from "lucide-react"
+import { loginRequest } from "@/lib/api"
 
 interface LoginFormProps {
-  onLogin: () => void
+  onLogin: (token: string) => void
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -23,46 +24,22 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
-
     try {
-      // Simulate authentication delay
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-
-      // Validate credentials
-      if (username === "admin" && password === "admin123") {
-        toast({
-          variant: "success",
-          title: "Login Successful",
-          description: "Welcome to MANPASAND POS System",
-        })
-
-        // Small delay to show success toast
-        setTimeout(() => {
-          onLogin()
-        }, 500)
-      } else {
-        setError("Invalid username or password")
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Please check your credentials and try again",
-        })
-      }
-    } catch (error) {
-      setError("An error occurred during login")
-      toast({
-        variant: "destructive",
-        title: "Login Error",
-        description: "Something went wrong. Please try again.",
-      })
+      const { data } = await loginRequest(username, password)
+      toast({ variant: "success", title: "Login successful" })
+      onLogin(data.token)
+    } catch (err: any) {
+      setError(err.message)
+      toast({ variant: "destructive", title: "Login failed", description: err.message })
     } finally {
       setIsLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -132,7 +109,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             >
               Sign In
             </LoadingButton>
-            <div className="text-center text-sm text-gray-600">Demo Credentials: admin / admin123</div>
+            {/* <div className="text-center text-sm text-gray-600">Demo Credentials: admin / admin123</div> */}
           </form>
         </CardContent>
       </Card>
